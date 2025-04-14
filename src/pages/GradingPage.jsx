@@ -40,6 +40,7 @@ const GradingPage = () => {
         totalStudents: values.studentSubmissions.length,
         averageScore: 82.5,
         solutionImage: values.solutionImage,
+        solutionImageText: 'Mock extracted text from solution image',
         students: values.studentSubmissions.map((submission, index) => ({
           id: index + 1,
           name: submission.studentName,
@@ -47,6 +48,7 @@ const GradingPage = () => {
           score: Math.floor(Math.random() * 31) + 70,
           similarity: Math.random().toFixed(2),
           plagiarismFlag: Math.random() > 0.8,
+          extractedText: 'Mock extracted text from student submission',
           feedback: [
             { question: 1, correct: true, points: 10, feedback: 'Correct solution' },
             { question: 2, correct: Math.random() > 0.5, points: Math.random() > 0.5 ? 10 : 5, feedback: 'Partial credit given' },
@@ -124,6 +126,14 @@ const GradingPage = () => {
                         <p className="text-neutral-500">No solution image available</p>
                       )}
                     </div>
+                    <div className="mt-4">
+                      <h4 className="font-medium text-primary-700">OCR Extracted Text (Solution)</h4>
+                      <div className="p-3 border border-primary-200 rounded-md bg-primary-50">
+                        <p className="text-sm text-neutral-600 break-words">
+                          {gradingResults.solutionImageText || 'No text extracted from the solution image.'}
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
                   <div>
@@ -139,6 +149,14 @@ const GradingPage = () => {
                       ) : (
                         <p className="text-neutral-500">No submission image available</p>
                       )}
+                    </div>
+                    <div className="mt-4">
+                      <h4 className="font-medium text-primary-700">OCR Extracted Text (Submission)</h4>
+                      <div className="p-3 border border-primary-200 rounded-md bg-primary-50">
+                        <p className="text-sm text-neutral-600 break-words">
+                          {selectedStudent.extractedText || 'No text extracted from the student submission.'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -196,7 +214,7 @@ const GradingPage = () => {
           logicWeight: 0.7,
           similarityThreshold: 0.8,
           solutionImage: null,
-          studentSubmissions: [{ studentName: '', image: null }],
+          studentSubmissions: [],
         }}
         validationSchema={GradingSchema}
         onSubmit={handleSubmit}
@@ -271,93 +289,107 @@ const GradingPage = () => {
                 value={values.solutionImage}
                 required
               />
+              
+              {values.solutionImage && (
+                <div className="mt-3">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                    Solution Preview
+                  </label>
+                  <div className="border border-neutral-200 rounded-md overflow-hidden bg-neutral-50 p-4 h-[200px] flex items-center justify-center">
+                    <img
+                      src={URL.createObjectURL(values.solutionImage)}
+                      alt="Solution Preview"
+                      className="max-h-full max-w-full"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-2 text-red-400"
+                    onClick={() => setFieldValue('solutionImage', null)}
+                  >
+                    X Remove Solution Image
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div className="border-t border-neutral-200 pt-4">
               <h3 className="text-lg font-medium text-neutral-800 mb-4">Student Submissions</h3>
-              
-              <FieldArray name="studentSubmissions">
-                {({ remove, push }) => (
-                  <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
-                    {values.studentSubmissions.map((submission, index) => (
-                      <div key={index} className="p-4 border border-neutral-200 rounded-md bg-neutral-50">
-                        <div className="flex justify-between items-center mb-2">
-                          <h4 className="text-md font-medium text-neutral-700">Student #{index + 1}</h4>
-                          {values.studentSubmissions.length > 1 && (
-                            <button
-                              type="button"
-                              className="text-danger-600 hover:text-danger-700 text-sm"
-                              onClick={() => remove(index)}
-                            >
-                              Remove
-                            </button>
-                          )}
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <InputField
-                            id={`studentSubmissions.${index}.studentName`}
-                            name={`studentSubmissions.${index}.studentName`}
-                            label="Student Name"
-                            placeholder="e.g., John Doe"
-                            onChange={handleChange}
-                            onBlur={handleBlur}
-                            value={values.studentSubmissions[index].studentName}
-                            error={
-                              errors.studentSubmissions && 
-                              errors.studentSubmissions[index] && 
-                              errors.studentSubmissions[index].studentName
-                            }
-                            touched={
-                              touched.studentSubmissions && 
-                              touched.studentSubmissions[index] && 
-                              touched.studentSubmissions[index].studentName
-                            }
-                            required
-                          />
-                          
-                          <InputField
-                            id={`studentSubmissions.${index}.image`}
-                            name={`studentSubmissions.${index}.image`}
-                            type="file"
-                            label="Student Submission"
-                            accept="image/*"
-                            onChange={(event) => {
-                              setFieldValue(
-                                `studentSubmissions.${index}.image`,
-                                event.currentTarget.files[0]
-                              );
+
+              <div className="space-y-4">
+                <InputField
+                  id="batchUpload"
+                  name="batchUpload"
+                  type="file"
+                  label="Batch Upload Images"
+                  helperText="Upload all student submission images at once"
+                  accept="image/*"
+                  multiple
+                  onChange={(event) => {
+                    const files = Array.from(event.currentTarget.files);
+                    const submissions = files.map((file) => ({
+                      studentName: '',
+                      image: file,
+                    }));
+                    setFieldValue('studentSubmissions', submissions);
+                  }}
+                />
+
+                <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
+                  {values.studentSubmissions.map((submission, index) => (
+                    <div key={index} className="p-4 border border-neutral-200 rounded-md bg-neutral-50">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <InputField
+                          id={`studentSubmissions.${index}.studentName`}
+                          name={`studentSubmissions.${index}.studentName`}
+                          label="Student Name"
+                          placeholder="e.g., John Doe"
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          value={values.studentSubmissions[index].studentName}
+                          error={
+                            errors.studentSubmissions &&
+                            errors.studentSubmissions[index] &&
+                            errors.studentSubmissions[index].studentName
+                          }
+                          touched={
+                            touched.studentSubmissions &&
+                            touched.studentSubmissions[index] &&
+                            touched.studentSubmissions[index].studentName
+                          }
+                          required
+                        />
+
+                        <div>
+                          <label className="block text-sm font-medium text-neutral-700 mb-1">
+                            Uploaded Image
+                          </label>
+                          <div className="border border-neutral-200 rounded-md overflow-hidden bg-neutral-50 p-4 h-[150px] flex items-center justify-center">
+                            <img
+                              src={URL.createObjectURL(submission.image)}
+                              alt={`Student Submission ${index + 1}`}
+                              className="max-h-full max-w-full"
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="mt-2  text-red-400"
+                            onClick={() => {
+                              const updatedSubmissions = [...values.studentSubmissions];
+                              updatedSubmissions.splice(index, 1);
+                              setFieldValue('studentSubmissions', updatedSubmissions);
                             }}
-                            onBlur={handleBlur}
-                            value={values.studentSubmissions[index].image}
-                            error={
-                              errors.studentSubmissions && 
-                              errors.studentSubmissions[index] && 
-                              errors.studentSubmissions[index].image
-                            }
-                            touched={
-                              touched.studentSubmissions && 
-                              touched.studentSubmissions[index] && 
-                              touched.studentSubmissions[index].image
-                            }
-                            required
-                          />
+                          >
+                            Remove Student Image
+                          </Button>
                         </div>
                       </div>
-                    ))}
-                    
-                    <div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => push({ studentName: '', image: null })}
-                      >
-                        Add Student
-                      </Button>
                     </div>
-                  </div>
-                )}
-              </FieldArray>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className="flex justify-end">

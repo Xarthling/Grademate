@@ -109,7 +109,7 @@ const Layout = ({ children }) => {
       </div>
       
       {/* Main content */}
-      <main className="flex-1 p-6 overflow-y-auto">
+      <main className="flex-1 p-6 ">
         <div className="container mx-auto">
           {children}
         </div>
