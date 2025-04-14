@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Formik, Form, FieldArray } from 'formik';
+import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import Layout from '../components/ui/Layout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import InputField from '../components/ui/InputField';
+import { useProcessing } from '../context/ProcessingContext';
 
 const GradingSchema = Yup.object().shape({
   quizName: Yup.string().required('Quiz name is required'),
@@ -27,41 +28,31 @@ const GradingSchema = Yup.object().shape({
 
 const GradingPage = () => {
   const [gradingResults, setGradingResults] = useState(null);
-  const [isGrading, setIsGrading] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const { isProcessing, gradeQuiz, generateReport } = useProcessing();
 
-  const handleSubmit = (values, { setSubmitting }) => {
-    setIsGrading(true);
-    console.log('Grading values:', values);
-    
-    setTimeout(() => {
-      const mockResults = {
-        quizName: values.quizName,
-        totalStudents: values.studentSubmissions.length,
-        averageScore: 82.5,
-        solutionImage: values.solutionImage,
-        solutionImageText: 'Mock extracted text from solution image',
-        students: values.studentSubmissions.map((submission, index) => ({
-          id: index + 1,
-          name: submission.studentName,
-          image: submission.image,
-          score: Math.floor(Math.random() * 31) + 70,
-          similarity: Math.random().toFixed(2),
-          plagiarismFlag: Math.random() > 0.8,
-          extractedText: 'Mock extracted text from student submission',
-          feedback: [
-            { question: 1, correct: true, points: 10, feedback: 'Correct solution' },
-            { question: 2, correct: Math.random() > 0.5, points: Math.random() > 0.5 ? 10 : 5, feedback: 'Partial credit given' },
-            { question: 3, correct: Math.random() > 0.5, points: Math.random() > 0.5 ? 10 : 0, feedback: 'Incorrect approach' },
-          ]
-        })),
-      };
-      
-      setGradingResults(mockResults);
-      setSelectedStudent(mockResults.students[0]);
-      setIsGrading(false);
+  const handleSubmit = async (values, { setSubmitting }) => {
+    try {
+      const results = await gradeQuiz(values);
+      setGradingResults(results);
+      setSelectedStudent(results.students[0]);
+    } catch (error) {
+      console.error('Grading error:', error);
+    } finally {
       setSubmitting(false);
-    }, 2000);
+    }
+  };
+
+  const handleGenerateReport = async () => {
+    if (!gradingResults) return;
+    
+    try {
+      const report = await generateReport(gradingResults, 'grading');
+      console.log('Generated report:', report);
+      alert(`Report generated! Download URL: ${report.downloadUrl}`);
+    } catch (error) {
+      console.error('Report generation error:', error);
+    }
   };
 
   const renderGradingResults = () => {
@@ -186,9 +177,6 @@ const GradingPage = () => {
                 <Button variant="outline" onClick={() => setSelectedStudent(null)}>
                   Clear Selection
                 </Button>
-                <Button variant="primary" onClick={() => {}}>
-                  Edit Grading
-                </Button>
               </div>
             </div>
           )}
@@ -198,7 +186,7 @@ const GradingPage = () => {
           <Button variant="secondary" onClick={() => setGradingResults(null)}>
             Grade Another Quiz
           </Button>
-          <Button variant="primary" onClick={() => {}}>
+          <Button variant="primary" onClick={handleGenerateReport}>
             Export Results
           </Button>
         </div>
@@ -220,98 +208,99 @@ const GradingPage = () => {
         onSubmit={handleSubmit}
       >
         {({ values, errors, touched, handleChange, handleBlur, setFieldValue, isSubmitting }) => (
-          <Form className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <InputField
-                id="quizName"
-                name="quizName"
-                label="Quiz Name"
-                placeholder="e.g., Math Quiz 101"
-                onChange={handleChange}
-                onBlur={handleBlur}
-                value={values.quizName}
-                error={errors.quizName}
-                touched={touched.quizName}
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <InputField
-                id="logicWeight"
-                name="logicWeight"
-                type="slider"
-                label="Logic Weight"
-                helperText="How much weight to give to logical structure vs. exact wording (0-1)"
-                onChange={handleChange}
-                onBlur={handleBlur}
-                value={values.logicWeight}
-                error={errors.logicWeight}
-                touched={touched.logicWeight}
-                required
-                min="0"
-                max="1"
-                step="0.1"
-              />
-
-              <InputField
-                id="similarityThreshold"
-                name="similarityThreshold"
-                type="slider"
-                label="Similarity Threshold"
-                helperText="Threshold for flagging potential plagiarism (0-1)"
-                onChange={handleChange}
-                onBlur={handleBlur}
-                value={values.similarityThreshold}
-                error={errors.similarityThreshold}
-                touched={touched.similarityThreshold}
-                required
-                min="0"
-                max="1"
-                step="0.1"
-              />
-            </div>
-
-            <div>
-              <InputField
-                id="solutionImage"
-                name="solutionImage"
-                type="file"
-                label="Solution Image"
-                helperText="Upload an image of the quiz solution"
-                accept="image/*"
-                onChange={(event) => {
-                  setFieldValue('solutionImage', event.currentTarget.files[0]);
-                }}
-                onBlur={handleBlur}
-                error={errors.solutionImage}
-                touched={touched.solutionImage}
-                value={values.solutionImage}
-                required
-              />
-              
-              {values.solutionImage && (
-                <div className="mt-3">
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Solution Preview
-                  </label>
-                  <div className="border border-neutral-200 rounded-md overflow-hidden bg-neutral-50 p-4 h-[200px] flex items-center justify-center">
-                    <img
-                      src={URL.createObjectURL(values.solutionImage)}
-                      alt="Solution Preview"
-                      className="max-h-full max-w-full"
+          <Form className="space-y-4">
+            <div className="grid grid-cols-12 gap-3">
+              <div className="col-span-12 md:col-span-8">
+                <div className="space-y-3">
+                  <InputField
+                    id="quizName"
+                    name="quizName"
+                    label="Quiz Name"
+                    placeholder="Quiz name"
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    value={values.quizName}
+                    error={errors.quizName}
+                    touched={touched.quizName}
+                    required
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <InputField
+                      id="logicWeight"
+                      name="logicWeight"
+                      type="slider"
+                      label="Logic Weight"
+                      helperText="Logic vs exact"
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      value={values.logicWeight}
+                      error={errors.logicWeight}
+                      touched={touched.logicWeight}
+                      required
+                      min="0"
+                      max="1"
+                      step="0.1"
+                    />
+                    <InputField
+                      id="similarityThreshold"
+                      name="similarityThreshold"
+                      type="slider"
+                      label="Similarity"
+                      helperText="Plagiarism check"
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                      value={values.similarityThreshold}
+                      error={errors.similarityThreshold}
+                      touched={touched.similarityThreshold}
+                      required
+                      min="0"
+                      max="1"
+                      step="0.1"
                     />
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="mt-2 text-red-400"
-                    onClick={() => setFieldValue('solutionImage', null)}
-                  >
-                    X Remove Solution Image
-                  </Button>
+                  <InputField
+                    id="solutionImage"
+                    name="solutionImage"
+                    type="file"
+                    label="Solution Image"
+                    helperText="Upload solution"
+                    accept="image/*"
+                    onChange={(event) => {
+                      setFieldValue('solutionImage', event.currentTarget.files[0]);
+                    }}
+                    onBlur={handleBlur}
+                    error={errors.solutionImage}
+                    touched={touched.solutionImage}
+                    value={values.solutionImage}
+                    required
+                  />
                 </div>
-              )}
+              </div>
+              
+              <div className="col-span-12 md:col-span-4">
+                {values.solutionImage ? (
+                  <div className="h-[350px] border rounded-lg overflow-hidden bg-neutral-50">
+                    <div className="relative w-full h-full group p-2">
+                      <img
+                        src={URL.createObjectURL(values.solutionImage)}
+                        alt="Solution Preview"
+                        className="w-full h-full object-contain"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFieldValue('solutionImage', null)}
+                        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-red-200 hover:bg-neutral-200 flex items-center justify-center text-neutral-600 text-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-[250px] border rounded-lg overflow-hidden bg-neutral-50 flex items-center justify-center text-neutral-400">
+                    <span>Solution preview will appear here</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="border-t border-neutral-200 pt-4">
@@ -396,9 +385,9 @@ const GradingPage = () => {
               <Button
                 type="submit"
                 variant="primary"
-                disabled={isSubmitting || isGrading}
+                disabled={isSubmitting || isProcessing}
               >
-                {isGrading ? 'Grading...' : 'Start Grading'}
+                {isProcessing ? 'Grading...' : 'Start Grading'}
               </Button>
             </div>
           </Form>
@@ -415,7 +404,16 @@ const GradingPage = () => {
           <p className="mt-1 text-sm text-neutral-500">Upload student submissions and a solution to grade quizzes automatically.</p>
         </div>
         
-        {gradingResults ? renderGradingResults() : renderGradingForm()}
+        {isProcessing && (
+          <div className="flex items-center justify-center py-6">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-neutral-300 border-t-primary-500 mb-4" aria-hidden="true"></div>
+              <p className="text-neutral-600">Processing your request...</p>
+            </div>
+          </div>
+        )}
+        
+        {!isProcessing && gradingResults ? renderGradingResults() : renderGradingForm()}
       </div>
     </Layout>
   );

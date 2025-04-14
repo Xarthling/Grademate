@@ -1,58 +1,78 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Layout from '../components/ui/Layout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import InputField from '../components/ui/InputField';
+import { useProcessing } from '../context/ProcessingContext';
 
 const PlagiarismPage = () => {
-  // Mock data for plagiarism results
-  const mockQuizzes = [
-    { id: 1, name: 'Math Quiz 101', date: 'Apr 10, 2025', students: 24 },
-    { id: 2, name: 'History Essay', date: 'Apr 5, 2025', students: 22 },
-    { id: 3, name: 'Physics Midterm', date: 'Mar 28, 2025', students: 26 },
-  ];
-
-  const mockPlagiarismData = {
-    quizName: 'History Essay',
-    date: 'Apr 5, 2025',
-    totalStudents: 22,
-    averageSimilarity: 0.32,
-    highSimilarityCount: 5,
-    students: [
-      { id: 1, name: 'Alice Johnson', similarity: 0.85, flag: true, matches: ['Bob Smith', 'Charlie Brown'] },
-      { id: 2, name: 'Bob Smith', similarity: 0.78, flag: true, matches: ['Alice Johnson'] },
-      { id: 3, name: 'Charlie Brown', similarity: 0.75, flag: true, matches: ['Alice Johnson'] },
-      { id: 4, name: 'David Lee', similarity: 0.62, flag: true, matches: ['Emma Davis'] },
-      { id: 5, name: 'Emma Davis', similarity: 0.58, flag: true, matches: ['David Lee'] },
-      { id: 6, name: 'Frank Wilson', similarity: 0.42, flag: false, matches: [] },
-      { id: 7, name: 'Grace Miller', similarity: 0.38, flag: false, matches: [] },
-      { id: 8, name: 'Henry Moore', similarity: 0.32, flag: false, matches: [] },
-      { id: 9, name: 'Isabella Taylor', similarity: 0.28, flag: false, matches: [] },
-      { id: 10, name: 'Jack Anderson', similarity: 0.25, flag: false, matches: [] },
-      { id: 11, name: 'Karen Thomas', similarity: 0.21, flag: false, matches: [] },
-      { id: 12, name: 'Liam Robinson', similarity: 0.18, flag: false, matches: [] },
-    ],
-  };
-
+  // State for the page
+  const [quizzes, setQuizzes] = useState([]);
   const [selectedQuiz, setSelectedQuiz] = useState(null);
   const [plagiarismData, setPlagiarismData] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [sortOrder, setSortOrder] = useState('desc');
   const [searchTerm, setSearchTerm] = useState('');
   const [similarityFilter, setSimilarityFilter] = useState(0);
-  const [viewType, setViewType] = useState('table'); // 'table' or 'grid'
+  const [viewType, setViewType] = useState('table');
   const [selectedPair, setSelectedPair] = useState(null);
   const [selectedMatchIndex, setSelectedMatchIndex] = useState(0);
 
-  const handleQuizSelect = (quizId) => {
+  // Get processing functions from context
+  const { 
+    isProcessing, 
+    getQuizzes, 
+    analyzePlagiarism, 
+    compareSubmissions,
+    generateReport 
+  } = useProcessing();
+
+  // Load quizzes on component mount
+  useEffect(() => {
+    const loadQuizzes = async () => {
+      try {
+        const fetchedQuizzes = await getQuizzes();
+        setQuizzes(fetchedQuizzes);
+      } catch (error) {
+        console.error('Failed to load quizzes:', error);
+      }
+    };
+
+    loadQuizzes();
+  }, [getQuizzes]);
+
+  const handleQuizSelect = async (quizId) => {
     setSelectedQuiz(quizId);
-    setIsLoading(true);
     
-    // Simulate API call to fetch plagiarism data
-    setTimeout(() => {
-      setPlagiarismData(mockPlagiarismData);
-      setIsLoading(false);
-    }, 1000);
+    try {
+      const result = await analyzePlagiarism(quizId);
+      setPlagiarismData(result);
+    } catch (error) {
+      console.error('Plagiarism analysis error:', error);
+    }
+  };
+
+  const handleCompareClick = async (student1, matchName, matchIndex = 0) => {
+    setSelectedMatchIndex(matchIndex);
+    
+    try {
+      const comparisonResult = await compareSubmissions(student1, matchName);
+      setSelectedPair(comparisonResult);
+    } catch (error) {
+      console.error('Comparison error:', error);
+    }
+  };
+
+  const handleGenerateReport = async () => {
+    if (!plagiarismData) return;
+    
+    try {
+      const report = await generateReport(plagiarismData, 'plagiarism');
+      // In a real app, you would handle the report (download, display, etc.)
+      console.log('Generated report:', report);
+      alert(`Report generated! Download URL: ${report.downloadUrl}`);
+    } catch (error) {
+      console.error('Report generation error:', error);
+    }
   };
 
   const handleSearchChange = (e) => {
@@ -82,36 +102,13 @@ const PlagiarismPage = () => {
       });
   }, [plagiarismData, searchTerm, similarityFilter, sortOrder]);
 
-  const handleCompareClick = (student1, matchName, matchIndex = 0) => {
-    // Find the second student based on the match name
-    const student2 = plagiarismData.students.find(s => s.name === matchName);
-    
-    if (!student2) {
-      console.error(`Could not find matching student: ${matchName}`);
-      return;
-    }
-    
-    setSelectedMatchIndex(matchIndex);
-    
-    // In a real app, this would fetch detailed comparison data
-    setSelectedPair({
-      student1,
-      student2,
-      comparisonDetails: [
-        { section: 'Introduction', similarity: 0.92, text1: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit...', text2: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit...' },
-        { section: 'Main Argument', similarity: 0.75, text1: 'Dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua...', text2: 'Dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua...' },
-        { section: 'Conclusion', similarity: 0.83, text1: 'Consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua...', text2: 'Consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua...' },
-      ]
-    });
-  };
-
   const renderQuizList = () => (
     <Card title="Select a Quiz" className="h-full">
       <div className="space-y-4">
         <p className="text-sm text-neutral-500">Select a quiz to view plagiarism analysis:</p>
         
         <div className="space-y-2">
-          {mockQuizzes.map(quiz => (
+          {quizzes.map(quiz => (
             <div 
               key={quiz.id}
               onClick={() => handleQuizSelect(quiz.id)}
@@ -457,7 +454,7 @@ const PlagiarismPage = () => {
             Back to Quiz List
           </Button>
           
-          <Button variant="primary" onClick={() => {}}>
+          <Button variant="primary" onClick={handleGenerateReport}>
             Generate Report
           </Button>
         </div>
@@ -468,16 +465,11 @@ const PlagiarismPage = () => {
   return (
     <Layout>
       <div className="space-y-8">
-        <div>
-          <h1 className="text-2xl font-semibold text-neutral-800">Plagiarism Detection</h1>
-          <p className="mt-1 text-sm text-neutral-500">Analyze and compare student submissions for potential plagiarism.</p>
-        </div>
-        
-        {isLoading ? (
+        {isProcessing ? (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-neutral-300 border-t-primary-500 mb-4" aria-hidden="true"></div>
-              <p className="text-neutral-600">Loading plagiarism analysis...</p>
+              <p className="text-neutral-600">Processing your request...</p>
             </div>
           </div>
         ) : plagiarismData ? (
