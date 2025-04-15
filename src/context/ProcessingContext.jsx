@@ -14,7 +14,7 @@ import {
 // Create context
 const ProcessingContext = createContext(null);
 
-const API_URL = 'https://84b1-182-183-25-135.ngrok-free.app';
+const API_URL = 'http://127.0.0.1:8000';
 
 // Custom hook for using the context
 export const useProcessing = () => {
@@ -33,6 +33,7 @@ export const ProcessingProvider = ({ children }) => {
 
 // Grade a quiz
 const gradeQuiz = useCallback(async (values) => {
+  console.log('Grading quiz with values:', values);
   setIsProcessing(true);
   setError(null);
 
@@ -58,7 +59,6 @@ const gradeQuiz = useCallback(async (values) => {
     values.studentSubmissions.forEach((submission) => {
       formData.append('studentImages', submission.image);
     });
-    console.log('Grading quiz with values:', formData);
 
     const headers = {};
     if (token) {

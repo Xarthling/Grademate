@@ -23,7 +23,7 @@ const Login = () => {
   const handleSubmit = async (values, { setSubmitting }) => {
     const { email, password } = values;
     const result = await login(email, password);
-    
+
     if (result.success) {
       navigate('/dashboard');
     }
@@ -35,12 +35,15 @@ const Login = () => {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="text-3xl">👨‍🏫</div>
-          </div>
+            <img
+              src="/public/gm_logo-removebg.png"
+              alt="Grade-Mate Logo"
+              className="h-20 mr-2"
+            />          </div>
           <h1 className="text-3xl font-semibold text-neutral-800">Grade-Mate</h1>
           <h2 className="mt-3 text-xl text-neutral-600">Sign in to your account</h2>
         </div>
-        
+
         <Card className="mt-8 shadow-medium">
           <Formik
             initialValues={{ email: '', password: '' }}
@@ -63,7 +66,7 @@ const Login = () => {
                   error={touched.email && errors.email}
                   required
                 />
-                
+
                 <InputField
                   id="password"
                   name="password"
@@ -82,7 +85,7 @@ const Login = () => {
                     {error}
                   </div>
                 )}
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <input
@@ -95,14 +98,14 @@ const Login = () => {
                       Remember me
                     </label>
                   </div>
-                  
+
                   <div className="text-sm">
                     <a href="/forgot-password" className="font-medium text-primary-600 hover:text-primary-500 transition-colors duration-150">
                       Forgot your password?
                     </a>
                   </div>
                 </div>
-                
+
                 <div>
                   <Button
                     type="submit"
@@ -117,7 +120,7 @@ const Login = () => {
             )}
           </Formik>
         </Card>
-        
+
         <div className="mt-4 text-center">
           <p className="text-sm text-neutral-600">
             Don't have an account?{' '}

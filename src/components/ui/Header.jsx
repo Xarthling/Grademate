@@ -17,7 +17,11 @@ const Header = () => {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <span className="text-xl mr-2">👨‍🏫</span>
+              <img 
+                src="/public/gm_logo-removebg.png" 
+                alt="Grade-Mate Logo" 
+                className="h-10 mr-2" 
+              />
               <h1 className="text-lg font-semibold text-neutral-800">Grade-Mate</h1>
             </div>
             
