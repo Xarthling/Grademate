@@ -4,7 +4,7 @@ import axios from 'axios';
 const AuthContext = createContext(null);
 
 // TODO: Move this to an environment configuration file
-const API_URL = 'http://localhost:3001/api';
+const API_URL = 'https://84b1-182-183-25-135.ngrok-free.app';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -17,22 +17,24 @@ export const AuthProvider = ({ children }) => {
     const userData = localStorage.getItem('user');
     if (token && userData) {
       setUser(JSON.parse(userData));
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     }
   }, []);
 
   const login = async (email, password) => {
+    console.log('Logging in with email:', email);
+    console.log('Logging in with password:', password);
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.post(`${API_URL}/auth/login`, {
+      const response = await axios.post(`${API_URL}/account/login/`, {
         email,
         password,
       });
       const { token, user } = response.data;
-      localStorage.setItem('token', token);
+      console.log('Login response:', response.data);
+      localStorage.setItem('token', token); // Add this line to store the token
+
       localStorage.setItem('user', JSON.stringify(user));
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(user);
       return { success: true };
     } catch (err) {
@@ -44,10 +46,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const signup = async (userData) => {
+    console.log('Signing up with data:', userData);
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.post(`${API_URL}/auth/signup`, userData);
+      const response = await axios.post(`${API_URL}/account/signup/`, userData);
       return { success: true };
     } catch (err) {
       setError(err.response?.data?.message || 'Signup failed');
@@ -65,13 +68,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   const forgotPassword = async (email) => {
+    console.log('Sending forgot password email to:', email);
     setLoading(true);
     setError(null);
     try {
-      await axios.post(`${API_URL}/auth/forgot-password`, { email });
+      await axios.post(`${API_URL}/account/search_email/`, { email });
       return { success: true };
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to send reset email');
+      setError(err.response?.data?.message?.data.error|| 'Failed to send reset email');
       return { success: false, error: err.response?.data?.message };
     } finally {
       setLoading(false);
@@ -79,10 +83,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   const resetPassword = async (token, password) => {
+    console.log('Resetting password with token:', token);
+    console.log('Resetting password with new password:', password);
     setLoading(true);
     setError(null);
     try {
-      await axios.post(`${API_URL}/auth/reset-password`, {
+      await axios.post(`${API_URL}/account/set_new_password/`, {
         token,
         password,
       });

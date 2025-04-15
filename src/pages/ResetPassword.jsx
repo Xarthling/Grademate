@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import InputField from '../components/ui/InputField';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
+import { useAuth } from '../context/AuthContext';
 
 const ResetPasswordSchema = Yup.object().shape({
   password: Yup.string()
@@ -17,20 +18,74 @@ const ResetPasswordSchema = Yup.object().shape({
 
 const ResetPassword = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
+  const params = useParams();
+  const location = useLocation();
+  const [token, setToken] = useState(null);
+  const { resetPassword, loading, error: authError } = useAuth();
+  const [resetComplete, setResetComplete] = useState(false);
 
-  const handleSubmit = (values, { setSubmitting, setStatus }) => {
-    // Here you would validate the token and submit the new password
-    console.log('Reset password values:', values);
-    console.log('Token:', token);
+  // Extract token from various possible sources
+  useEffect(() => {
+    // Try to get token from URL params first
+    let extractedToken = params.token;
 
-    setTimeout(() => {
+    // If not found in params, try to extract from pathname
+    if (!extractedToken) {
+      const pathParts = location.pathname.split('/');
+      if (pathParts.length > 2) {
+        extractedToken = pathParts[pathParts.length - 1];
+      }
+    }
+
+    // If still not found, check search params
+    if (!extractedToken) {
+      const searchParams = new URLSearchParams(location.search);
+      extractedToken = searchParams.get('token');
+    }
+
+    // Remove any trailing slash if present
+    if (extractedToken && extractedToken.endsWith('/')) {
+      extractedToken = extractedToken.slice(0, -1);
+    }
+
+    console.log('Extracted token:', extractedToken);
+    setToken(extractedToken);
+  }, [params, location]);
+
+  const handleSubmit = async (values, { setSubmitting, setErrors }) => {
+    try {
+      if (!token) {
+        setErrors({ submit: 'Invalid or missing token' });
+        return;
+      }
+
+      console.log('Resetting password with token:', token);
+      const response = await resetPassword(token, values.password);
+
+      if (response.success) {
+        setResetComplete(true);
+      } else {
+        setErrors({ submit: response.error || 'Failed to reset password. Please try again.' });
+      }
+    } catch (error) {
+      setErrors({ submit: error.message });
+    } finally {
       setSubmitting(false);
-      navigate('/');
-    }, 1000);
+    }
   };
 
+  // Show loading state while determining token
+  if (token === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="p-6">
+          <p className="text-neutral-600">Loading reset page...</p>
+        </Card>
+      </div>
+    );
+  }
+
+  // Invalid token check
   if (!token) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -57,38 +112,70 @@ const ResetPassword = () => {
         </div>
 
         <Card className="mt-8 shadow-medium">
-          <Formik
-            initialValues={{ password: '', confirmPassword: '' }}
-            validationSchema={ResetPasswordSchema}
-            onSubmit={handleSubmit}
-          >
-            {({ isSubmitting }) => (
-              <Form className="space-y-6">
-                <InputField
-                  id="password"
-                  name="password"
-                  type="password"
-                  label="New Password"
-                  required
-                />
-                <InputField
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  label="Confirm New Password"
-                  required
-                />
-                <Button
-                  type="submit"
-                  variant="primary"
-                  disabled={isSubmitting}
-                  className="w-full"
-                >
-                  {isSubmitting ? 'Updating password...' : 'Update password'}
-                </Button>
-              </Form>
-            )}
-          </Formik>
+          {resetComplete ? (
+            <div className="text-center p-4">
+              <h3 className="text-lg font-medium text-green-600">Password Reset Complete!</h3>
+              <p className="mt-2 text-neutral-600">
+                Your password has been reset successfully.
+              </p>
+              <Button 
+                variant="primary" 
+                className="mt-4"
+                onClick={() => navigate('/')}
+              >
+                Go to Login
+              </Button>
+            </div>
+          ) : (
+            <Formik
+              initialValues={{ password: '', confirmPassword: '' }}
+              validationSchema={ResetPasswordSchema}
+              onSubmit={handleSubmit}
+            >
+              {({ isSubmitting, touched, errors, getFieldProps }) => (
+                <Form className="space-y-6">
+                  {authError && (
+                    <div className="text-red-500 text-sm p-2 bg-red-50 rounded">
+                      {authError}
+                    </div>
+                  )}
+                  
+                  <InputField
+                    id="password"
+                    name="password"
+                    type="password"
+                    label="New Password"
+                    required
+                    {...getFieldProps('password')}
+                    error={touched.password && errors.password}
+                  />
+                  
+                  <InputField
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    label="Confirm New Password"
+                    required
+                    {...getFieldProps('confirmPassword')}
+                    error={touched.confirmPassword && errors.confirmPassword}
+                  />
+                  
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    disabled={isSubmitting || loading}
+                    className="w-full"
+                  >
+                    {isSubmitting || loading ? 'Updating password...' : 'Update password'}
+                  </Button>
+                  
+                  {errors.submit && (
+                    <div className="text-red-500 text-sm mt-2">{errors.submit}</div>
+                  )}
+                </Form>
+              )}
+            </Formik>
+          )}
         </Card>
 
         <div className="text-center">

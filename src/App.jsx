@@ -19,27 +19,27 @@ const PrivateRoute = ({ element }) => {
   // }
   
   // return isAuthenticated ? element : <Navigate to="/" replace />;
-  return element;
-
+  return element
 };
 
 const App = () => {
   return (
-    <div className="min-h-screen w-full bg-gray-50">
-      <AuthProvider>
+    <AuthProvider>
+      <div className="min-h-screen w-full bg-gray-50">
         <ProcessingProvider>
           <Routes>
             <Route path="/" element={<AuthLayout><Login /></AuthLayout>} />
             <Route path="/signup" element={<AuthLayout><SignUp /></AuthLayout>} />
             <Route path="/forgot-password" element={<AuthLayout><ForgotPassword /></AuthLayout>} />
-            <Route path="/reset-password" element={<AuthLayout><ResetPassword /></AuthLayout>} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/dashboard" element={<PrivateRoute element={<Dashboard />} />} />
             <Route path="/grading" element={<PrivateRoute element={<GradingPage />} />} />
             <Route path="/plagiarism" element={<PrivateRoute element={<PlagiarismPage />} />} />
           </Routes>
         </ProcessingProvider>
-      </AuthProvider>
-    </div>
+      </div>
+    </AuthProvider>
   );
 };
 

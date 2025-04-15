@@ -2,6 +2,7 @@ import React from 'react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import InputField from '../components/ui/InputField';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
@@ -17,17 +18,16 @@ const LoginSchema = Yup.object().shape({
 
 const Login = () => {
   const navigate = useNavigate();
+  const { login, loading, error } = useAuth();
 
-  const handleSubmit = (values, { setSubmitting }) => {
-    // This would normally be an API call
-    console.log('Login values:', values);
+  const handleSubmit = async (values, { setSubmitting }) => {
+    const { email, password } = values;
+    const result = await login(email, password);
     
-    // Simulate login
-    setTimeout(() => {
-      setSubmitting(false);
-      // Redirect to dashboard on successful login
+    if (result.success) {
       navigate('/dashboard');
-    }, 1000);
+    }
+    setSubmitting(false);
   };
 
   return (
@@ -37,7 +37,7 @@ const Login = () => {
           <div className="flex justify-center mb-4">
             <div className="text-3xl">👨‍🏫</div>
           </div>
-          <h1 className="text-3xl font-semibold text-neutral-800">Teacher Assistant</h1>
+          <h1 className="text-3xl font-semibold text-neutral-800">Grade-Mate</h1>
           <h2 className="mt-3 text-xl text-neutral-600">Sign in to your account</h2>
         </div>
         
@@ -46,8 +46,10 @@ const Login = () => {
             initialValues={{ email: '', password: '' }}
             validationSchema={LoginSchema}
             onSubmit={handleSubmit}
+            validateOnChange={true}
+            validateOnBlur={true}
           >
-            {({ isSubmitting, errors, touched }) => (
+            {({ isSubmitting, errors, touched, handleChange, handleBlur, values }) => (
               <Form className="space-y-6">
                 <InputField
                   id="email"
@@ -55,8 +57,10 @@ const Login = () => {
                   type="email"
                   label="Email address"
                   placeholder="you@example.com"
-                  error={errors.email}
-                  touched={touched.email}
+                  value={values.email}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  error={touched.email && errors.email}
                   required
                 />
                 
@@ -66,10 +70,18 @@ const Login = () => {
                   type="password"
                   label="Password"
                   placeholder="••••••••"
-                  error={errors.password}
-                  touched={touched.password}
+                  value={values.password}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  error={touched.password && errors.password}
                   required
                 />
+
+                {error && (
+                  <div className="text-red-500 text-sm text-center">
+                    {error}
+                  </div>
+                )}
                 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
@@ -95,10 +107,10 @@ const Login = () => {
                   <Button
                     type="submit"
                     variant="primary"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || loading}
                     className="w-full"
                   >
-                    {isSubmitting ? 'Signing in...' : 'Sign in'}
+                    {loading ? 'Signing in...' : 'Sign in'}
                   </Button>
                 </div>
               </Form>

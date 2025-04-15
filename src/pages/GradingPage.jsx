@@ -32,8 +32,9 @@ const GradingPage = () => {
   const { isProcessing, gradeQuiz, generateReport } = useProcessing();
 
   const handleSubmit = async (values, { setSubmitting }) => {
+    console.log( values);
     try {
-      const results = await gradeQuiz(values);
+            const results = await gradeQuiz(values);
       setGradingResults(results);
       setSelectedStudent(results.students[0]);
     } catch (error) {
@@ -47,9 +48,14 @@ const GradingPage = () => {
     if (!gradingResults) return;
     
     try {
-      const report = await generateReport(gradingResults, 'grading');
-      console.log('Generated report:', report);
-      alert(`Report generated! Download URL: ${report.downloadUrl}`);
+      // Generate Excel report with the grading data
+      const report = await generateReport(gradingResults, 'excel');
+      
+      if (report.success) {
+        console.log('Excel report generated successfully:', report.fileName);
+      } else {
+        console.error('Failed to generate Excel report');
+      }
     } catch (error) {
       console.error('Report generation error:', error);
     }
@@ -58,12 +64,19 @@ const GradingPage = () => {
   const renderGradingResults = () => {
     if (!gradingResults) return null;
 
+    // Ensure solutionImageText is properly formatted
+    const formattedSolutionText = Array.isArray(gradingResults.solutionImageText) 
+      ? gradingResults.solutionImageText.join('\n') 
+      : typeof gradingResults.solutionImageText === 'string' 
+        ? gradingResults.solutionImageText 
+        : 'No text extracted from the solution image.';
+
     return (
       <div className="space-y-6">
         <div>
           <h2 className="text-xl font-semibold text-neutral-800">Grading Results: {gradingResults.quizName}</h2>
           <p className="mt-1 text-sm text-neutral-500">
-            {gradingResults.totalStudents} submissions graded • Average score: {gradingResults.averageScore.toFixed(1)}
+            {gradingResults.totalStudents} submissions graded • Average score: {(gradingResults.averageScore || 0).toFixed(1)}
           </p>
         </div>
 
@@ -84,15 +97,20 @@ const GradingPage = () => {
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-neutral-800 truncate">{student.name}</h3>
                       <div className="flex items-center mt-1">
-                        <span className="text-sm text-neutral-500 mr-3">Score: {student.score}/100</span>
-                        {student.plagiarismFlag && (
-                          <span className="px-2 py-0.5 text-xs rounded-full bg-danger-100 text-danger-800 inline-block">
+                        <span className="text-sm text-neutral-500 mr-3">Score: {student.obtained_marks}/{student.total_marks}</span>
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-primary-100 text-primary-800 inline-block">
+                          Grade: {student.grade}
+                        </span>
+                        {student.levenshtein_score > 18 && (
+                          <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-danger-100 text-danger-800 inline-block">
                             Plagiarism
                           </span>
                         )}
                       </div>
                     </div>
-                    <div className="text-2xl flex-shrink-0 ml-2">{student.score >= 90 ? '🌟' : student.score >= 80 ? '👍' : '🔄'}</div>
+                    <div className="text-2xl flex-shrink-0 ml-2">
+                      {student.grade === 'A' ? '🌟' : student.grade === 'B' ? '👍' : student.grade === 'C' ? '👌' : '🔄'}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -107,11 +125,12 @@ const GradingPage = () => {
                     <h3 className="font-medium text-neutral-700 mb-2">Solution</h3>
                     <div className="border border-neutral-200 rounded-md overflow-hidden bg-neutral-50 p-4 h-[300px] flex items-center justify-center">
                       {gradingResults.solutionImage ? (
-                        <div className="text-center w-full h-full flex flex-col items-center justify-center">
-                          <div className="bg-neutral-100 rounded-md p-6 w-full h-full flex flex-col items-center justify-center">
-                            <p className="text-neutral-600 text-sm">Solution Image Preview</p>
-                            <p className="text-xs text-neutral-500 mt-1">(Image would be displayed here)</p>
-                          </div>
+                        <div className="w-full h-full flex items-center justify-center">
+                          <img 
+                            src={gradingResults.solutionImage} 
+                            alt="Solution" 
+                            className="max-w-full max-h-full object-contain"
+                          />
                         </div>
                       ) : (
                         <p className="text-neutral-500">No solution image available</p>
@@ -120,9 +139,9 @@ const GradingPage = () => {
                     <div className="mt-4">
                       <h4 className="font-medium text-primary-700">OCR Extracted Text (Solution)</h4>
                       <div className="p-3 border border-primary-200 rounded-md bg-primary-50">
-                        <p className="text-sm text-neutral-600 break-words">
-                          {gradingResults.solutionImageText || 'No text extracted from the solution image.'}
-                        </p>
+                        <pre className="text-sm text-neutral-600 break-words whitespace-pre-wrap">
+                          {formattedSolutionText}
+                        </pre>
                       </div>
                     </div>
                   </div>
@@ -131,11 +150,12 @@ const GradingPage = () => {
                     <h3 className="font-medium text-neutral-700 mb-2">Student Submission</h3>
                     <div className="border border-neutral-200 rounded-md overflow-hidden bg-neutral-50 p-4 h-[300px] flex items-center justify-center">
                       {selectedStudent.image ? (
-                        <div className="text-center w-full h-full flex flex-col items-center justify-center">
-                          <div className="bg-neutral-100 rounded-md p-6 w-full h-full flex flex-col items-center justify-center">
-                            <p className="text-neutral-600 text-sm">Student Submission Preview</p>
-                            <p className="text-xs text-neutral-500 mt-1">(Image would be displayed here)</p>
-                          </div>
+                        <div className="w-full h-full flex items-center justify-center">
+                          <img 
+                            src={selectedStudent.image} 
+                            alt="Student Submission" 
+                            className="max-w-full max-h-full object-contain"
+                          />
                         </div>
                       ) : (
                         <p className="text-neutral-500">No submission image available</p>
@@ -144,31 +164,49 @@ const GradingPage = () => {
                     <div className="mt-4">
                       <h4 className="font-medium text-primary-700">OCR Extracted Text (Submission)</h4>
                       <div className="p-3 border border-primary-200 rounded-md bg-primary-50">
-                        <p className="text-sm text-neutral-600 break-words">
-                          {selectedStudent.extractedText || 'No text extracted from the student submission.'}
-                        </p>
+                        <pre className="text-sm text-neutral-600 break-words whitespace-pre-wrap">
+                          {Array.isArray(selectedStudent.extractedText)
+                            ? selectedStudent.extractedText.join('\n')
+                            : typeof selectedStudent.extractedText === 'string'
+                              ? selectedStudent.extractedText
+                              : 'No text extracted from the student submission.'}
+                        </pre>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-6 border-t border-neutral-100 pt-4">
-                  <h3 className="font-medium text-neutral-700 mb-3">Detailed Feedback</h3>
-                  <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
-                    {selectedStudent.feedback.map((item, index) => (
-                      <div key={index} className="flex items-start p-3 border border-neutral-100 rounded-md">
-                        <div className={`mr-3 p-1 rounded-full flex-shrink-0 ${item.correct ? 'bg-success-100 text-success-700' : 'bg-danger-100 text-danger-700'}`}>
-                          {item.correct ? '✓' : '✗'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center">
-                            <h4 className="font-medium text-neutral-800">Question {item.question}</h4>
-                            <span className="ml-3 text-sm text-neutral-500">{item.points} points</span>
-                          </div>
-                          <p className="text-sm text-neutral-600 mt-1 break-words">{item.feedback}</p>
-                        </div>
+                  <h3 className="font-medium text-neutral-700 mb-3">Score Breakdown</h3>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-3 border border-neutral-100 rounded-md">
+                        <p className="text-sm text-neutral-500">AST Score</p>
+                        <p className="text-lg font-semibold">{selectedStudent.ast_score}</p>
                       </div>
-                    ))}
+                      <div className="p-3 border border-neutral-100 rounded-md">
+                        <p className="text-sm text-neutral-500">Final Score</p>
+                        <p className="text-lg font-semibold">{selectedStudent.final_score.toFixed(2)}</p>
+                      </div>
+                      <div className="p-3 border border-neutral-100 rounded-md">
+                        <p className="text-sm text-neutral-500">Levenshtein Score</p>
+                        <p className="text-lg font-semibold">{selectedStudent.levenshtein_score}</p>
+                      </div>
+                      <div className="p-3 border border-neutral-100 rounded-md">
+                        <p className="text-sm text-neutral-500">Grade</p>
+                        <p className="text-lg font-semibold">{selectedStudent.grade}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                      <h4 className="font-medium text-yellow-800">Analysis Summary</h4>
+                      <p className="text-sm text-yellow-700 mt-1">
+                        This submission received {selectedStudent.obtained_marks} out of {selectedStudent.ast_score} marks.
+                        {selectedStudent.levenshtein_score > 15 ? 
+                          " The code has significant similarities with other submissions." : 
+                          " The code appears to be original work."}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </Card>
@@ -200,7 +238,8 @@ const GradingPage = () => {
         initialValues={{
           quizName: '',
           logicWeight: 0.7,
-          similarityThreshold: 0.8,
+          similarityThreshold: 0.3, // Changed initial value to be complementary to logicWeight
+          total: 100, // Default question count
           solutionImage: null,
           studentSubmissions: [],
         }}
@@ -212,26 +251,52 @@ const GradingPage = () => {
             <div className="grid grid-cols-12 gap-3">
               <div className="col-span-12 md:col-span-8">
                 <div className="space-y-3">
-                  <InputField
-                    id="quizName"
-                    name="quizName"
-                    label="Quiz Name"
-                    placeholder="Quiz name"
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    value={values.quizName}
-                    error={errors.quizName}
-                    touched={touched.quizName}
-                    required
-                  />
+                  <div className="grid grid-cols-12 gap-3">
+                    <div className="col-span-8">
+                      <InputField
+                        id="quizName"
+                        name="quizName"
+                        label="Quiz Name"
+                        placeholder="Quiz name"
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        value={values.quizName}
+                        error={errors.quizName}
+                        touched={touched.quizName}
+                        required
+                      />
+                    </div>
+                    <div className="col-span-4">
+                      <InputField
+                        id="total"
+                        name="total"
+                        type="number"
+                        label="Total Marks"
+                        placeholder="Total Marks"
+                        onChange={handleChange}
+                        onBlur={handleBlur}
+                        value={values.total}
+                        error={errors.total}
+                        touched={touched.total}
+                        required
+                        min="1"
+                        step="1"
+                      />
+                    </div>
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <InputField
                       id="logicWeight"
                       name="logicWeight"
                       type="slider"
                       label="Logic Weight"
-                      helperText="Logic vs exact"
-                      onChange={handleChange}
+                      helperText="Logic weight (1 - Similarity)"
+                      onChange={(e) => {
+                        const newValue = parseFloat(e.target.value);
+                        setFieldValue('logicWeight', newValue);
+                        // Update similarityThreshold to be complementary (sum to 1)
+                        setFieldValue('similarityThreshold', parseFloat((1 - newValue).toFixed(1)));
+                      }}
                       onBlur={handleBlur}
                       value={values.logicWeight}
                       error={errors.logicWeight}
@@ -246,8 +311,13 @@ const GradingPage = () => {
                       name="similarityThreshold"
                       type="slider"
                       label="Similarity"
-                      helperText="Plagiarism check"
-                      onChange={handleChange}
+                      helperText="Similarity weight (1 - Logic)"
+                      onChange={(e) => {
+                        const newValue = parseFloat(e.target.value);
+                        setFieldValue('similarityThreshold', newValue);
+                        // Update logicWeight to be complementary (sum to 1)
+                        setFieldValue('logicWeight', parseFloat((1 - newValue).toFixed(1)));
+                      }}
                       onBlur={handleBlur}
                       value={values.similarityThreshold}
                       error={errors.similarityThreshold}

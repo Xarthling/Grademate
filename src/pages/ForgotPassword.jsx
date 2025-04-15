@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import { useNavigate } from 'react-router-dom';
 import InputField from '../components/ui/InputField';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
+import { useAuth } from '../context/AuthContext';
 
 const ForgotPasswordSchema = Yup.object().shape({
   email: Yup.string().email('Invalid email').required('Email is required'),
@@ -12,13 +13,23 @@ const ForgotPasswordSchema = Yup.object().shape({
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
+  const { forgotPassword, loading, error: authError } = useAuth();
+  const [resetSent, setResetSent] = useState(false);
 
-  const handleSubmit = (values, { setSubmitting }) => {
-    console.log('Reset password for:', values);
-    setTimeout(() => {
+  const handleSubmit = async (values, { setSubmitting, setErrors }) => {
+    try {
+      const response = await forgotPassword(values.email);
+      
+      if (response.success) {
+        setResetSent(true);
+      } else {
+        setErrors({ submit: response.error || 'Failed to send reset instructions. Please try again.' });
+      }
+    } catch (error) {
+      setErrors({ submit: error.message });
+    } finally {
       setSubmitting(false);
-      navigate('/');
-    }, 1000);
+    }
   };
 
   return (
@@ -30,38 +41,67 @@ const ForgotPassword = () => {
         </div>
         
         <Card className="mt-8 shadow-medium">
-          <Formik
-            initialValues={{ email: '' }}
-            validationSchema={ForgotPasswordSchema}
-            onSubmit={handleSubmit}
-          >
-            {({ isSubmitting }) => (
-              <Form className="space-y-6">
-                <InputField
-                  id="email"
-                  name="email"
-                  type="email"
-                  label="Email address"
-                  required
-                />
-                <Button
-                  type="submit"
-                  variant="primary"
-                  disabled={isSubmitting}
-                  className="w-full"
-                >
-                  {isSubmitting ? 'Sending...' : 'Send reset instructions'}
-                </Button>
-              </Form>
-            )}
-          </Formik>
+          {resetSent ? (
+            <div className="text-center p-4">
+              <h3 className="text-lg font-medium text-green-600">Reset instructions sent!</h3>
+              <p className="mt-2 text-neutral-600">
+                We've sent reset instructions to your email. Please check your inbox.
+              </p>
+              <Button 
+                variant="secondary" 
+                className="mt-4"
+                onClick={() => navigate('/')}
+              >
+                Back to Login
+              </Button>
+            </div>
+          ) : (
+            <Formik
+              initialValues={{ email: '' }}
+              validationSchema={ForgotPasswordSchema}
+              onSubmit={handleSubmit}
+            >
+              {({ isSubmitting, touched, errors, getFieldProps }) => (
+                <Form className="space-y-6">
+                  {authError && (
+                    <div className="text-red-500 text-sm p-2 bg-red-50 rounded">
+                      {authError}
+                    </div>
+                  )}
+                  
+                  <InputField
+                    id="email"
+                    name="email"
+                    type="email"
+                    label="Email address"
+                    required
+                    {...getFieldProps('email')}
+                    error={touched.email && errors.email}
+                  />
+                  
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    disabled={isSubmitting || loading}
+                    className="w-full"
+                  >
+                    {isSubmitting || loading ? 'Sending...' : 'Send reset instructions'}
+                  </Button>
+                  
+                  {errors.submit && (
+                    <div className="text-red-500 text-sm mt-2">{errors.submit}</div>
+                  )}
+                </Form>
+              )}
+            </Formik>
+          )}
         </Card>
         
         <div className="text-center">
           <p className="text-sm text-neutral-600">
             Remember your password?{' '}
             <a href="/" className="font-medium text-primary-600 hover:text-primary-500">
-              Back to 
+              Back to login
             </a>
           </p>
         </div>

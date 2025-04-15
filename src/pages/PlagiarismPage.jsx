@@ -297,7 +297,7 @@ const PlagiarismPage = () => {
                       <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Similarity</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Matched With</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Actions</th>
+                      {/* <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Actions</th> */}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
@@ -340,7 +340,7 @@ const PlagiarismPage = () => {
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
+                        {/* <td className="px-4 py-4 whitespace-nowrap">
                           {student.matches.length > 0 ? (
                             <div className="flex space-x-2">
                               <select 
@@ -359,7 +359,7 @@ const PlagiarismPage = () => {
                           ) : (
                             <span className="text-neutral-400 text-xs">No matches</span>
                           )}
-                        </td>
+                        </td> */}
                       </tr>
                     ))}
                     
@@ -422,7 +422,7 @@ const PlagiarismPage = () => {
                       )}
                     </div>
                     
-                    {student.matches.length > 0 && (
+                    {/* {student.matches.length > 0 && (
                       <div className="mt-4 pt-3 border-t border-neutral-100">
                         <Button 
                           variant="outline" 
@@ -433,7 +433,7 @@ const PlagiarismPage = () => {
                           Compare Submissions
                         </Button>
                       </div>
-                    )}
+                    )} */}
                   </Card>
                 ))}
                 

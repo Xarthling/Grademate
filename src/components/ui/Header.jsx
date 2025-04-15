@@ -18,7 +18,7 @@ const Header = () => {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <span className="text-xl mr-2">👨‍🏫</span>
-              <h1 className="text-lg font-semibold text-neutral-800">Teacher Assistant</h1>
+              <h1 className="text-lg font-semibold text-neutral-800">Grade-Mate</h1>
             </div>
             
             <nav className="hidden md:block">

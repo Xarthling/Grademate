@@ -24,23 +24,20 @@ const Dashboard = () => {
   const [selectedQuiz, setSelectedQuiz] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { getQuizzes, getStats, isProcessing } = useProcessing();
-  
+
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [fetchedQuizzes, fetchedStats] = await Promise.all([
-          getQuizzes(),
-          getStats(),
-        ]);
-        setQuizzes(fetchedQuizzes);
-        setStats(fetchedStats);
+        const dashboardData = await getStats();
+        setStats(dashboardData.stats);
+        setQuizzes(dashboardData.recentQuizzes);
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
       }
     };
 
     loadData();
-  }, [getQuizzes, getStats]);
+  }, [getStats]);
 
   return (
     <Layout>
@@ -49,7 +46,7 @@ const Dashboard = () => {
           <h1 className="text-2xl font-semibold text-neutral-800">Dashboard</h1>
           <p className="mt-1 text-sm text-neutral-500">Welcome back! Here's what's happening with your classes.</p>
         </div>
-        
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((stat, index) => (
@@ -68,11 +65,11 @@ const Dashboard = () => {
                       <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Quiz</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Date</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Students</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Actions</th> 
+                      <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
-                    {quizzes.map((quiz, index) => (
+                    {quizzes.map((quiz) => (
                       <tr key={quiz.id} className="hover:bg-neutral-50 transition-colors duration-150">
                         <td className="px-4 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-neutral-800">{quiz.name}</div>
@@ -81,13 +78,21 @@ const Dashboard = () => {
                           <div className="text-sm text-neutral-500">{quiz.date}</div>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
-                          <div className="text-sm text-neutral-800">{quiz.students}</div>
+                          <div className="text-sm text-neutral-800">{quiz.student_count}</div>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                           <button
-                            onClick={() => {
-                              setSelectedQuiz(quiz);
-                              setIsModalOpen(true);
+                            onClick={async () => {
+                              try {
+                                setSelectedQuiz(quiz);
+                                setIsModalOpen(true);
+                                // Call the API to get quiz details
+                                const quizDetails = await getQuizDetailsWithGrades(quiz.id);
+                                // You may want to set these details in state if needed
+                                setSelectedQuiz({ ...quiz, ...quizDetails });
+                              } catch (error) {
+                                console.error('Failed to load quiz details:', error);
+                              }
                             }}
                             className="text-primary-600 hover:text-primary-700 mr-3"
                           >
@@ -116,7 +121,7 @@ const Dashboard = () => {
               </Link>
             </div>
           </Card>
-          
+
           <Card className="hover:shadow-medium transition-shadow duration-200" hoverable>
             <div className="flex items-center justify-between">
               <div>
